@@ -10,13 +10,23 @@ try:
 except ImportError:
     AI_READY = False
 
-LANG_MAP_ISO = {"vi": "vi", "en": "en", "cn": "zh-CN", "kr": "ko", "jp": "ja"}
+# Ánh xạ ngôn ngữ ISO chính xác cho Deep Translator
+LANG_MAP_ISO = {
+    "vi": "vi", 
+    "en": "en", 
+    "zh-CN": "zh-CN", 
+    "ko": "ko", 
+    "ja": "ja",
+    "cn": "zh-CN", 
+    "kr": "ko", 
+    "jp": "ja"
+}
 
 def translate_blocks_real_ai(texts, target="vi"):
     if AI_READY:
         try:
             from deep_translator import GoogleTranslator
-            t = GoogleTranslator(source='auto', target=LANG_MAP_ISO.get(target, "vi"))
+            t = GoogleTranslator(source='auto', target=LANG_MAP_ISO.get(target, target))
             combined = " ||| ".join(texts)
             res = t.translate(combined)
             if res: return res.split(" ||| ")
