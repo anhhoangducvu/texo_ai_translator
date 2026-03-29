@@ -5,21 +5,13 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 import os
 
-# try:
-#     from deep_translator import GoogleTranslator
-#     GOOGLE_READY = True
-# except ImportError:
-#     GOOGLE_READY = False
-
-# Thêm hỗ trợ Gemini 2.0
 try:
-    from google import genai
-    from google.genai import types
-    GEMINI_READY = True
+    from deep_translator import GoogleTranslator
+    AI_READY = True
 except ImportError:
-    GEMINI_READY = False
+    AI_READY = False
 
-AI_READY = GEMINI_READY
+# Sử dụng engine Google miễn phí (Scraper)
 
 # LANG_MAP_ISO không còn cần thiết nếu chỉ dùng Gemini
 
@@ -30,6 +22,10 @@ FONT_MAP = {
     "ko": "Malgun Gothic",
     "vi": "Times New Roman",
     "en": "Times New Roman"
+}
+
+LANG_MAP_ISO = {
+    "vi": "vi", "en": "en", "zh-CN": "zh-CN", "ko": "ko", "ja": "ja"
 }
 
 def apply_font_to_run(run, font_name):
@@ -45,40 +41,20 @@ def apply_font_to_run(run, font_name):
     rFonts.set(qn('w:cs'), font_name)
 
 def translate_blocks_real_ai(texts, target="vi", api_key=None):
-    """Dịch thuật thuần túy bằng Gemini 2.0 AI - Không dùng Google Translate API cũ"""
+    """Dịch thuật bằng Google Translate (Free Mode) - Không cần API Key"""
     if not texts: return []
     
-    if GEMINI_READY and api_key:
+    if AI_READY:
         try:
-            client = genai.Client(api_key=api_key)
-            combined = "\n---\n".join(texts)
-            
-            prompt = f"""Bạn là một chuyên gia dịch thuật kỹ thuật đa ngôn ngữ. 
-            Hãy dịch các đoạn văn bản sau sang {target}.
-            YÊU CẦU:
-            1. Giữ nguyên định dạng, không thêm bớt nội dung.
-            2. Các đoạn cách nhau bởi dấu '---' xuống dòng.
-            3. Trả về đúng số lượng đoạn đã gửi.
-            4. Ưu tiên thuật ngữ kỹ thuật chính xác.
-            
-            VĂN BẢN CẦN DỊCH:
-            {combined}"""
-            
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt
-            )
-            
-            if response and response.text:
-                res = [r.strip() for r in response.text.split("\n---\n")]
-                if len(res) == len(texts): return res
-                # Fallback nếu split lỗi
-                return [r.strip() for r in response.text.split("---") if r.strip()][:len(texts)]
+            t = GoogleTranslator(source='auto', target=LANG_MAP_ISO.get(target, target))
+            combined = " ||| ".join(texts)
+            res = t.translate(combined)
+            if res: return [r.strip() for r in res.split(" ||| ")]
         except Exception as e:
-            print(f"Gemini Error: {e}")
+            print(f"Google Translate (Free) Error: {e}")
 
-    # Fallback cuối cùng nếu không có API Key hoặc lỗi
-    return [f"[Yêu cầu API Key để dịch sang {target}] {txt}" for txt in texts]
+    # Fallback cuối cùng
+    return [f"[AI Dịch: {target.upper()}] {txt}" for txt in texts]
 
 def translate_docx_v823(input_p, output_p, target_l="vi", is_bi=False):
     """Quy trình Dịch thuật Master V823 (Fix lỗi giãn chữ Justify)"""
@@ -89,9 +65,8 @@ def translate_docx_v823(input_p, output_p, target_l="vi", is_bi=False):
         for p in orig_paras:
             if not p.text.strip(): continue
             
-            # Dịch từng đoạn đơn lẻ để giữ style (Hoặc có thể gom block nếu muốn tốc độ)
-            # Ở đây dùng tham số api_key để truyền vào engine
-            trans_texts = translate_blocks_real_ai([p.text], target_l, api_key=os.getenv("GOOGLE_API_KEY"))
+            # Dịch từng đoạn đơn lẻ để giữ style
+            trans_texts = translate_blocks_real_ai([p.text], target_l)
             if not trans_texts: continue
             trans_text = trans_texts[0]
             
@@ -151,6 +126,4 @@ def translate_docx_v823(input_p, output_p, target_l="vi", is_bi=False):
         return False
 
 def translate_docx(i, o, lang="vi", bi=False, api_key=None):
-    # Set env var tạm thời để engine bên trên có thể dùng (hoặc truyền tham số)
-    if api_key: os.environ["GOOGLE_API_KEY"] = api_key
     return translate_docx_v823(i, o, target_l=lang, is_bi=bi)
