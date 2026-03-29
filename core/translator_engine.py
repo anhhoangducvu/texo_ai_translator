@@ -5,11 +5,11 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 import os
 
-try:
-    from deep_translator import GoogleTranslator
-    GOOGLE_READY = True
-except ImportError:
-    GOOGLE_READY = False
+# try:
+#     from deep_translator import GoogleTranslator
+#     GOOGLE_READY = True
+# except ImportError:
+#     GOOGLE_READY = False
 
 # Thêm hỗ trợ Gemini 2.0
 try:
@@ -19,19 +19,9 @@ try:
 except ImportError:
     GEMINI_READY = False
 
-AI_READY = GOOGLE_READY or GEMINI_READY
+AI_READY = GEMINI_READY
 
-# Ánh xạ ngôn ngữ ISO chính xác cho Deep Translator
-LANG_MAP_ISO = {
-    "vi": "vi", 
-    "en": "en", 
-    "zh-CN": "zh-CN", 
-    "ko": "ko", 
-    "ja": "ja",
-    "cn": "zh-CN", 
-    "kr": "ko", 
-    "jp": "ja"
-}
+# LANG_MAP_ISO không còn cần thiết nếu chỉ dùng Gemini
 
 # Fonts hỗ trợ CJK để tránh lỗi ô vuông (tofu)
 FONT_MAP = {
@@ -55,22 +45,21 @@ def apply_font_to_run(run, font_name):
     rFonts.set(qn('w:cs'), font_name)
 
 def translate_blocks_real_ai(texts, target="vi", api_key=None):
-    """Dịch thuật đa phương thức: Gemini (Ưu tiên) -> Google -> Local"""
+    """Dịch thuật thuần túy bằng Gemini 2.0 AI - Không dùng Google Translate API cũ"""
     if not texts: return []
     
-    # 1. Thử dùng Gemini nếu có Key
     if GEMINI_READY and api_key:
         try:
             client = genai.Client(api_key=api_key)
             combined = "\n---\n".join(texts)
-            target_full = FONT_MAP.get(target, target) # Dùng font map để lấy tên ngôn ngữ nếu cần, hoặc text trực tiếp
             
             prompt = f"""Bạn là một chuyên gia dịch thuật kỹ thuật đa ngôn ngữ. 
-            Hãy dịch các đoạn văn bản sau sang {target} (Mã ISO: {target}).
+            Hãy dịch các đoạn văn bản sau sang {target}.
             YÊU CẦU:
             1. Giữ nguyên định dạng, không thêm bớt nội dung.
             2. Các đoạn cách nhau bởi dấu '---' xuống dòng.
             3. Trả về đúng số lượng đoạn đã gửi.
+            4. Ưu tiên thuật ngữ kỹ thuật chính xác.
             
             VĂN BẢN CẦN DỊCH:
             {combined}"""
@@ -81,30 +70,15 @@ def translate_blocks_real_ai(texts, target="vi", api_key=None):
             )
             
             if response and response.text:
-                res = response.text.split("\n---\n")
-                if len(res) == len(texts): return [r.strip() for r in res]
+                res = [r.strip() for r in response.text.split("\n---\n")]
+                if len(res) == len(texts): return res
                 # Fallback nếu split lỗi
                 return [r.strip() for r in response.text.split("---") if r.strip()][:len(texts)]
         except Exception as e:
             print(f"Gemini Error: {e}")
 
-    # 2. Thử dùng Google Translator (miễn phí)
-    if GOOGLE_READY:
-        try:
-            t = GoogleTranslator(source='auto', target=LANG_MAP_ISO.get(target, target))
-            # Hạn chế độ dài để tránh lỗi 429/length
-            results = []
-            for txt in texts:
-                if len(txt) > 4500: # Cắt nhỏ nếu quá dài
-                    results.append(t.translate(txt[:4500]))
-                else:
-                    results.append(t.translate(txt))
-            return results
-        except Exception as e:
-            print(f"Google Translate Error: {e}")
-
-    # 3. Fallback cuối cùng
-    return [f"[Chế độ Offline: {target.upper()}] {txt}" for txt in texts]
+    # Fallback cuối cùng nếu không có API Key hoặc lỗi
+    return [f"[Yêu cầu API Key để dịch sang {target}] {txt}" for txt in texts]
 
 def translate_docx_v823(input_p, output_p, target_l="vi", is_bi=False):
     """Quy trình Dịch thuật Master V823 (Fix lỗi giãn chữ Justify)"""
