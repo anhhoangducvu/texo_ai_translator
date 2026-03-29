@@ -2,13 +2,24 @@ import docx
 from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
 import os
 
 try:
     from deep_translator import GoogleTranslator
-    AI_READY = True
+    GOOGLE_READY = True
 except ImportError:
-    AI_READY = False
+    GOOGLE_READY = False
+
+# Thêm hỗ trợ Gemini 2.0
+try:
+    from google import genai
+    from google.genai import types
+    GEMINI_READY = True
+except ImportError:
+    GEMINI_READY = False
+
+AI_READY = GOOGLE_READY or GEMINI_READY
 
 # Ánh xạ ngôn ngữ ISO chính xác cho Deep Translator
 LANG_MAP_ISO = {
@@ -22,16 +33,78 @@ LANG_MAP_ISO = {
     "jp": "ja"
 }
 
-def translate_blocks_real_ai(texts, target="vi"):
-    if AI_READY:
+# Fonts hỗ trợ CJK để tránh lỗi ô vuông (tofu)
+FONT_MAP = {
+    "zh-CN": "SimSun",
+    "ja": "MS Gothic",
+    "ko": "Malgun Gothic",
+    "vi": "Times New Roman",
+    "en": "Times New Roman"
+}
+
+def apply_font_to_run(run, font_name):
+    """Áp dụng mãnh liệt font cho mọi loại ký tự để tránh fallback về font gốc"""
+    if not font_name: return
+    run.font.name = font_name
+    r = run._element
+    rPr = r.get_or_add_rPr()
+    rFonts = rPr.get_or_add_rFonts()
+    rFonts.set(qn('w:ascii'), font_name)
+    rFonts.set(qn('w:hAnsi'), font_name)
+    rFonts.set(qn('w:eastAsia'), font_name)
+    rFonts.set(qn('w:cs'), font_name)
+
+def translate_blocks_real_ai(texts, target="vi", api_key=None):
+    """Dịch thuật đa phương thức: Gemini (Ưu tiên) -> Google -> Local"""
+    if not texts: return []
+    
+    # 1. Thử dùng Gemini nếu có Key
+    if GEMINI_READY and api_key:
         try:
-            from deep_translator import GoogleTranslator
+            client = genai.Client(api_key=api_key)
+            combined = "\n---\n".join(texts)
+            target_full = FONT_MAP.get(target, target) # Dùng font map để lấy tên ngôn ngữ nếu cần, hoặc text trực tiếp
+            
+            prompt = f"""Bạn là một chuyên gia dịch thuật kỹ thuật đa ngôn ngữ. 
+            Hãy dịch các đoạn văn bản sau sang {target} (Mã ISO: {target}).
+            YÊU CẦU:
+            1. Giữ nguyên định dạng, không thêm bớt nội dung.
+            2. Các đoạn cách nhau bởi dấu '---' xuống dòng.
+            3. Trả về đúng số lượng đoạn đã gửi.
+            
+            VĂN BẢN CẦN DỊCH:
+            {combined}"""
+            
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt
+            )
+            
+            if response and response.text:
+                res = response.text.split("\n---\n")
+                if len(res) == len(texts): return [r.strip() for r in res]
+                # Fallback nếu split lỗi
+                return [r.strip() for r in response.text.split("---") if r.strip()][:len(texts)]
+        except Exception as e:
+            print(f"Gemini Error: {e}")
+
+    # 2. Thử dùng Google Translator (miễn phí)
+    if GOOGLE_READY:
+        try:
             t = GoogleTranslator(source='auto', target=LANG_MAP_ISO.get(target, target))
-            combined = " ||| ".join(texts)
-            res = t.translate(combined)
-            if res: return res.split(" ||| ")
-        except: pass
-    return [f"[AI Dịch: {target.upper()}] {txt}" for txt in texts]
+            # Hạn chế độ dài để tránh lỗi 429/length
+            results = []
+            for txt in texts:
+                if len(txt) > 4500: # Cắt nhỏ nếu quá dài
+                    results.append(t.translate(txt[:4500]))
+                else:
+                    results.append(t.translate(txt))
+            return results
+        except Exception as e:
+            print(f"Google Translate Error: {e}")
+
+    # 3. Fallback cuối cùng
+    return [f"[Chế độ Offline: {target.upper()}] {txt}" for txt in texts]
 
 def translate_docx_v823(input_p, output_p, target_l="vi", is_bi=False):
     """Quy trình Dịch thuật Master V823 (Fix lỗi giãn chữ Justify)"""
@@ -42,8 +115,9 @@ def translate_docx_v823(input_p, output_p, target_l="vi", is_bi=False):
         for p in orig_paras:
             if not p.text.strip(): continue
             
-            # Dịch từng đoạn đơn lẻ để giữ style
-            trans_texts = translate_blocks_real_ai([p.text], target_l)
+            # Dịch từng đoạn đơn lẻ để giữ style (Hoặc có thể gom block nếu muốn tốc độ)
+            # Ở đây dùng tham số api_key để truyền vào engine
+            trans_texts = translate_blocks_real_ai([p.text], target_l, api_key=os.getenv("GOOGLE_API_KEY"))
             if not trans_texts: continue
             trans_text = trans_texts[0]
             
@@ -53,6 +127,11 @@ def translate_docx_v823(input_p, output_p, target_l="vi", is_bi=False):
                 run = new_p.add_run(f"({trans_text})")
                 run.italic = True
                 run.font.size = Pt(11)
+                
+                # Áp dụng font CJK nếu cần
+                target_font = FONT_MAP.get(target_l, "Arial")
+                apply_font_to_run(run, target_font)
+                
                 new_p.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
                 
                 # Hoán đổi element để Gốc nằm trên - Dịch nằm dưới
@@ -61,21 +140,35 @@ def translate_docx_v823(input_p, output_p, target_l="vi", is_bi=False):
                 p_elt.addnext(new_p_elt)
             else:
                 p.text = trans_text
+                # Với trường hợp thay thế hoàn toàn, cũng cần set font cho tất cả runs
+                target_font = FONT_MAP.get(target_l, "Arial")
+                for run in p.runs:
+                    apply_font_to_run(run, target_font)
 
         # Xử lý bảng biểu (Table)
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
                     if cell.text.strip():
-                        t_cell_list = translate_blocks_real_ai([cell.text], target_l)
+                        t_cell_list = translate_blocks_real_ai([cell.text], target_l, api_key=os.getenv("GOOGLE_API_KEY"))
                         if t_cell_list:
                             t_cell = t_cell_list[0]
                             if is_bi:
                                 new_para = cell.add_paragraph(f"({t_cell})")
-                                new_para.runs[0].italic = True
+                                run = new_para.runs[0]
+                                run.italic = True
+                                
+                                # Áp dụng font CJK nếu cần
+                                target_font = FONT_MAP.get(target_l, "Arial")
+                                apply_font_to_run(run, target_font)
+                                
                                 new_para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
                             else:
                                 cell.text = t_cell
+                                target_font = FONT_MAP.get(target_l, "Arial")
+                                for p_cell in cell.paragraphs:
+                                    for run in p_cell.runs:
+                                        apply_font_to_run(run, target_font)
                             
         doc.save(output_p)
         return True
@@ -83,5 +176,7 @@ def translate_docx_v823(input_p, output_p, target_l="vi", is_bi=False):
         print(f"Lỗi V823: {e}")
         return False
 
-def translate_docx(i, o, lang="vi", bi=False):
+def translate_docx(i, o, lang="vi", bi=False, api_key=None):
+    # Set env var tạm thời để engine bên trên có thể dùng (hoặc truyền tham số)
+    if api_key: os.environ["GOOGLE_API_KEY"] = api_key
     return translate_docx_v823(i, o, target_l=lang, is_bi=bi)
