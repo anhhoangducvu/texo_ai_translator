@@ -71,19 +71,11 @@ if not check_password(): st.stop()
 # --- MAIN ---
 st.markdown("<div class='main-header'>TEXO AI MASTER TRANSLATOR</div>", unsafe_allow_html=True)
 
-# API KEY from secrets or input
-api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
-
 with st.sidebar:
-    st.markdown("### 🛠 Cấu hình Hệ thống")
-    if not api_key:
-        api_key = st.text_input("🔑 Google API Key (GenAI):", type="password")
-    else:
-        st.success("✅ AI Cloud Engine: **SẴN SÀNG**")
-        st.caption("Sử dụng model Gemini 2.0 Flash bản quyền.")
-    
-    st.divider()
+    st.markdown("### 🛠 Hệ thống Dịch thuật")
     st.info("Hệ thống hỗ trợ dịch thuật hồ sơ kỹ thuật chuyên sâu với độ chính xác cao.")
+    st.divider()
+    st.caption("Engine: TEXO Master Engine (Zero-Config)")
 
 col1, col2 = st.columns([1, 1], gap="large")
 
@@ -114,7 +106,7 @@ with col2:
                     with open(in_path, "wb") as f:
                         f.write(doc_file.getbuffer())
                     
-                    if translate_docx(in_path, out_path, langs[target_lang], is_bilingual, api_key=api_key):
+                    if translate_docx(in_path, out_path, langs[target_lang], is_bilingual):
                         st.success("🎉 Đã dịch xong hồ sơ.")
                         st.balloons()
                         
