@@ -11,8 +11,7 @@ st.set_page_config(page_title="TEXO AI Master Translator", page_icon="🔠", lay
 # --- STYLE PREMIUM ---
 st.markdown("""
 <style>
-    .stApp { background-color: #050b18 !important; color: #ffffff !important; }
-    h1, h2, h3, h4, h5, h6, p, span, div, li, label, .stMarkdown { color: #e0e6ed !important; }
+    /* --- TỐI ƯU HÓA CSS CHO CẢ 2 CHẾ ĐỘ --- */
     .main-header { 
         background: linear-gradient(90deg, #1e3a8a, #3b82f6);
         -webkit-background-clip: text;
@@ -38,7 +37,8 @@ st.markdown("""
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
     }
-    .stSelectbox div[data-baseweb="select"] { background-color: #111827 !important; color: white !important; border: 1px solid #374151 !important; }
+    /* Dropdown fix for visibility */
+    .stSelectbox div[data-baseweb="select"] { border: 1px solid rgba(59, 130, 246, 0.2) !important; }
     
     /* File Status Card */
     .file-card {
