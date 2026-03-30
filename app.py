@@ -82,7 +82,7 @@ def check_password():
     if st.session_state.authenticated: return True
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("<h2 style='text-align: center; color: #FFD700; margin-top: 100px;'>🏦 TEXO HUB AUTH</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: #FFD700; margin-top: 100px;'>🏦 TEXO TRANSLATOR AUTH</h2>", unsafe_allow_html=True)
         pwd = st.text_input("Mật khẩu truy cập hệ thống AI:", type="password")
         if st.button("XÁC THỰC"):
             if pwd == "texo2026":
