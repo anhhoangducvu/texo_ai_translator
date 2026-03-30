@@ -219,7 +219,7 @@ with col_proc:
     st.markdown("### 📦 Trạng thái & Tải về")
     
     if not st.session_state.processed_files:
-        st.markdown("<div style='height: 200px; border: 2px dashed #444; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #666;'>Chờ tải file và thực thi...</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; color: #64748b; font-weight: 500; padding: 100px 20px;'>Hệ thống dịch thuật đang sẵn sàng... <br>Hãy tải hồ sơ ở cột bên trái để AI bắt đầu giải mã.</div>", unsafe_allow_html=True)
     else:
         # Check if all successful for bulk download
         success_files = [f for f in st.session_state.processed_files.values() if f["status"] == "success"]
