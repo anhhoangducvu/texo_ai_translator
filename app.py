@@ -11,68 +11,78 @@ st.set_page_config(page_title="TEXO AI Master Translator", page_icon="🔠", lay
 # --- STYLE PREMIUM ---
 st.markdown("""
 <style>
-    /* --- TỐI ƯU HÓA CSS CHO CẢ 2 CHẾ ĐỘ --- */
+    /* --- TỐI ƯU HÓA CSS THÍCH ỨNG (ADAPTIVE THEME V2.0) --- */
+    
     .main-header { 
         background: linear-gradient(90deg, #1e3a8a, #3b82f6);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: 800; 
-        font-size: 40px; 
+        font-size: 38px; 
         text-align: center; 
-        padding-bottom: 10px; 
-        margin-bottom: 30px;
+        padding-bottom: 5px; 
+        margin-bottom: 25px;
     }
+
     .stButton>button { 
         background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%) !important; 
         color: white !important; 
         border: none !important; 
         border-radius: 12px; 
         font-weight: bold; 
-        padding: 0.5rem 1rem;
+        padding: 0.6rem 1rem;
         width: 100%;
-        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-        transition: 0.3s;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
     }
+    
     .stButton>button:hover { 
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
     }
-    /* Dropdown fix for visibility */
-    .stSelectbox div[data-baseweb="select"] { border: 1px solid rgba(59, 130, 246, 0.2) !important; }
-    
-    /* File Status Card */
+
+    /* File Status Card: Thỏa hiệp giữa 2 chế độ */
     .file-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: var(--secondary-background-color) !important;
+        border: 1px solid rgba(59, 130, 246, 0.2) !important;
         border-radius: 12px;
         padding: 15px;
-        margin-bottom: 10px;
+        margin-bottom: 12px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
-    .status-badge {
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: bold;
-    }
-    .status-pending { background: #374151; color: #9ca3af; }
-    .status-running { background: #1e3a8a; color: #60a5fa; border: 1px solid #3b82f6; }
-    .status-success { background: #064e3b; color: #34d399; border: 1px solid #10b981; }
-    .status-error { background: #7f1d1d; color: #f87171; border: 1px solid #ef4444; }
 
-    .footer { text-align: center; color: #4b5563; font-size: 12px; margin-top: 50px; border-top: 1px solid #1f2937; padding-top: 20px; }
-    
-    /* Sidebar styling */
-    .sidebar-section {
-        background: rgba(255, 255, 255, 0.03);
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        border-left: 3px solid #3b82f6;
+    .status-badge {
+        padding: 4px 14px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
     }
-    .sidebar-title { color: #3b82f6; font-weight: bold; margin-bottom: 10px; display: block; }
+    
+    /* Màu Badge tối ưu cho độ tương phản */
+    .status-pending { background: #94a3b8; color: #ffffff !important; }
+    .status-running { background: #3b82f6; color: #ffffff !important; }
+    .status-success { background: #10b981; color: #ffffff !important; }
+    .status-error { background: #ef4444; color: #ffffff !important; }
+
+    .footer { text-align: center; color: #64748b; font-size: 11px; margin-top: 40px; border-top: 1px solid rgba(59, 130, 246, 0.1); padding-top: 20px; }
+    
+    /* Sidebar styling: Thích ứng tinh tế */
+    .sidebar-section {
+        background: rgba(59, 130, 246, 0.05);
+        padding: 18px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        border-left: 4px solid #3b82f6;
+    }
+    .sidebar-title { color: #1e40af; font-weight: 800; margin-bottom: 12px; display: block; font-size: 14px; }
+    
+    /* Quay lại màu sáng cho Title trong Dark Mode */
+    @media (prefers-color-scheme: dark) {
+        .sidebar-title { color: #60a5fa; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
